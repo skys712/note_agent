@@ -14,3 +14,4 @@ venv/
 # 临时文件
 *.log
 _temp/
+_prompts.json
