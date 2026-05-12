@@ -1,0 +1,16 @@
+# 项目数据（含 API 密钥的配置）
+.vscode/
+
+# 用户项目数据
+projects/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# 临时文件
+*.log
+_temp/
