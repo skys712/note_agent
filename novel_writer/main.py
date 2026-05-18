@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -11,11 +12,29 @@ from novel_writer.core.context import ProjectContext
 from novel_writer.core.workflow import WorkflowOrchestrator
 
 
-_CURRENT_PROJECT_FILE = Path("projects/.current")
+# 仓库根: novel_writer/main.py -> 上两级
+_WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _projects_root() -> Path:
+    """项目集根目录。优先使用 NOVEL_WRITER_PROJECTS_DIR 环境变量，否则回退到仓库内 projects/。"""
+    override = os.environ.get("NOVEL_WRITER_PROJECTS_DIR", "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+    return _WORKSPACE_ROOT / "projects"
+
+
+def _current_project_file() -> Path:
+    return _projects_root() / ".current"
+
+
+def _default_chars_json() -> Path:
+    """批量人物 JSON 的默认查找路径(基于仓库根)"""
+    return _WORKSPACE_ROOT / "input_config" / "chars.json"
 
 
 def find_latest_project() -> Path | None:
-    projects_dir = Path("projects")
+    projects_dir = _projects_root()
     if not projects_dir.exists():
         return None
     dirs = sorted(
@@ -27,22 +46,30 @@ def find_latest_project() -> Path | None:
 
 
 def get_project_path() -> Path:
-    if _CURRENT_PROJECT_FILE.exists():
-        name = _CURRENT_PROJECT_FILE.read_text("utf-8").strip()
-        path = Path("projects") / name
+    current_file = _current_project_file()
+    if current_file.exists():
+        name = current_file.read_text("utf-8").strip()
+        path = _projects_root() / name
         if path.is_dir():
             return path
+        # .current 指向的项目目录已被删除/重命名,清理并提示
+        print(f"当前项目 '{name}' 已不存在,清理 .current 并尝试切换到最近项目。")
+        try:
+            current_file.unlink()
+        except OSError:
+            pass
     path = find_latest_project()
     if not path:
         print("没有项目, 请先用 init 命令创建。")
         sys.exit(1)
+    print(f"已自动切换到最近项目: {path.name}")
     return path
 
 
 # ======== 项目管理命令 ========
 
 def cmd_init(args) -> None:
-    project_dir = Path("projects") / args.name
+    project_dir = _projects_root() / args.name
     if project_dir.exists():
         print(f"项目 '{args.name}' 已存在。")
         return
@@ -61,17 +88,19 @@ def cmd_init(args) -> None:
     print(f"  预估容量: 约 {args.volumes * args.chapters * args.sections * 3500:,} 字")
 
     # 设为当前项目
-    _CURRENT_PROJECT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _CURRENT_PROJECT_FILE.write_text(args.name, encoding="utf-8")
+    current_file = _current_project_file()
+    current_file.parent.mkdir(parents=True, exist_ok=True)
+    current_file.write_text(args.name, encoding="utf-8")
 
 
 def cmd_use(args) -> None:
-    path = Path("projects") / args.name
+    path = _projects_root() / args.name
     if not path.is_dir():
         print(f"项目 '{args.name}' 不存在。")
         sys.exit(1)
-    _CURRENT_PROJECT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _CURRENT_PROJECT_FILE.write_text(args.name, encoding="utf-8")
+    current_file = _current_project_file()
+    current_file.parent.mkdir(parents=True, exist_ok=True)
+    current_file.write_text(args.name, encoding="utf-8")
     print(f"当前项目: {args.name}")
 
 
@@ -98,7 +127,7 @@ def cmd_status(args) -> None:
 
 
 def cmd_list(args) -> None:
-    projects_dir = Path("projects")
+    projects_dir = _projects_root()
     if not projects_dir.exists():
         print("暂无项目。")
         return
@@ -112,8 +141,9 @@ def cmd_list(args) -> None:
         return
 
     current = ""
-    if _CURRENT_PROJECT_FILE.exists():
-        current = _CURRENT_PROJECT_FILE.read_text("utf-8").strip()
+    current_file = _current_project_file()
+    if current_file.exists():
+        current = current_file.read_text("utf-8").strip()
 
     for d in dirs:
         ctx = ProjectContext(d)
@@ -143,8 +173,8 @@ def cmd_progress(args) -> None:
             vol_sections += len(ctx.list_sections(vol_idx, ch_num))
         bar_len = 20
         filled = int(bar_len * vol_sections / (cfg["chapters_per_volume"] * cfg["sections_per_chapter"]))
-        bar = "█" * filled + "░" * (bar_len - filled)
-        marker = " ←" if vol_idx == int(ctx.get_status().get("current_vol", "1")) else ""
+        bar = "#" * filled + "." * (bar_len - filled)
+        marker = " <current>" if vol_idx == int(ctx.get_status().get("current_vol", "1")) else ""
         if vol_sections > 0 or vol_idx <= (ctx.list_volumes()[-1] if ctx.list_volumes() else 0) + 1:
             print(f"  第{vol_idx:02d}卷 [{bar}] {vol_sections}/{cfg['chapters_per_volume'] * cfg['sections_per_chapter']} 节{marker}")
 
@@ -165,7 +195,16 @@ def cmd_state(args) -> None:
 def cmd_world(args) -> None:
     path = get_project_path()
     orch = WorkflowOrchestrator(path)
-    orch.generate_world(premise=getattr(args, "premise", ""))
+    premise = getattr(args, "premise", "")
+    allow_invent = getattr(args, "allow_invent", False)
+    config_file = getattr(args, "config", "")
+    if config_file:
+        import json
+        with open(config_file, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        premise = cfg.get("premise", premise)
+        allow_invent = cfg.get("allow_invent", allow_invent)
+    orch.generate_world(premise=premise, allow_invent=allow_invent)
 
 
 def cmd_write(args) -> None:
@@ -228,8 +267,18 @@ def cmd_char(args) -> None:
         orch.create_relationship(args.char_a, args.char_b, args.type)
     elif sub == "faction":
         orch.create_faction(args.name, getattr(args, "description", ""))
+    elif sub == "batch":
+        import json
+        with open(args.file, "r", encoding="utf-8") as f:
+            chars = json.load(f)
+        orch.create_characters_batch(chars)
+    elif sub == "refresh":
+        orch.refresh_character(
+            char_id=args.id,
+            specs=getattr(args, "specs", ""),
+        )
     else:
-        print("用法: char <create|list|show|relation|faction> ...")
+        print("用法: char <create|list|show|relation|faction|batch|refresh> ...")
 
 
 def cmd_fragment(args) -> None:
@@ -271,14 +320,6 @@ def cmd_fragment(args) -> None:
         print("用法: fragment <add|list|show|scan> ...")
 
 
-# ======== 占位命令（后续Phase实现） ========
-
-def cmd_not_implemented(name: str):
-    def fn(args):
-        print(f"'{name}' 命令尚未实现, 将在后续 Phase 中添加。")
-    return fn
-
-
 # ======== CLI ========
 
 def build_parser() -> argparse.ArgumentParser:
@@ -318,7 +359,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     # 世界观
     p_world = sub.add_parser("world", help="生成世界观设定")
-    p_world.add_argument("--premise", default="", help="核心设定前提")
+    p_world.add_argument("--premise", default="", help="核心设定前提（与 --config 互斥）")
+    p_world.add_argument("--config", default="", help="JSON 配置文件路径（含 premise/allow_invent）")
+    p_world.add_argument("--allow-invent", action="store_true", default=False,
+                         help="允许 LLM 在碎片之外杜撰新的世界观元素（默认禁止）")
 
     # 人物
     p_char = sub.add_parser("char", help="人物管理")
@@ -338,6 +382,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_char_fac = p_char_sub.add_parser("faction", help="创建势力")
     p_char_fac.add_argument("name", help="势力名称")
     p_char_fac.add_argument("--description", default="", help="补充描述")
+    p_char_batch = p_char_sub.add_parser("batch", help="批量并行创建人物")
+    p_char_batch.add_argument("--file", default=str(_default_chars_json()),
+                              help=f"JSON 文件路径 (默认: {_default_chars_json()})，每项含 name/role/faction/specs")
+    p_char_refresh = p_char_sub.add_parser("refresh", help="刷新人物卡（基于最新上下文重新生成）")
+    p_char_refresh.add_argument("id", help="人物ID")
+    p_char_refresh.add_argument("--specs", default="", help="补充要求或修改方向")
 
     # 大纲
     p_ol = sub.add_parser("outline", help="大纲设计")
@@ -359,9 +409,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_wc = p_write_sub.add_parser("chapter", help="写整章(逐节)")
     p_wc.add_argument("vol", type=int, help="卷号")
     p_wc.add_argument("ch", type=int, help="章号")
-
-    # 审校 (占位)
-    sub.add_parser("review", help="审校 [待实现]")
 
     return parser
 
@@ -386,7 +433,6 @@ def main():
         "char": cmd_char,
         "outline": cmd_outline,
         "write": cmd_write,
-        "review": cmd_not_implemented("review"),
     }
 
     cmd = commands.get(args.command)

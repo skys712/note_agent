@@ -16,12 +16,6 @@ class MarkdownStore:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 
-    def append(self, content: str, *segments: str) -> None:
-        path = self.root.joinpath(*segments)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(content)
-
     def list_files(self, pattern: str) -> list[Path]:
         return sorted(self.root.glob(pattern))
 

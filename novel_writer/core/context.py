@@ -6,6 +6,19 @@ from novel_writer.storage.markdown_store import MarkdownStore
 class ProjectContext:
     """面向百万字长篇的项目上下文管理"""
 
+    # 世界观领域生成顺序: 基础领域先, 时间线最后(需要引用所有其他领域)
+    WORLD_DOMAINS = (
+        "geography", "magic_system", "races",
+        "politics", "history", "culture", "glossary", "timeline",
+    )
+
+    # 全部 8 个 Agent 的 memory 文件 ID
+    AGENT_IDS = (
+        "editor_in_chief", "world_builder", "character_director",
+        "plot_writer", "style_executor", "state_manager",
+        "emotion_controller", "chapter_break_director",
+    )
+
     def __init__(self, project_path: Path):
         self.root = Path(project_path)
         self.store = MarkdownStore(self.root)
@@ -40,18 +53,25 @@ class ProjectContext:
         self.store.write(self._format_kv(status), "status.md")
 
     def mark_progress(self, vol: int, ch: int, sec: int) -> None:
+        """记录已完成章节，并把 status 指向下一节待写位置。"""
         s = self.get_status()
-        s["current_vol"] = str(vol)
-        s["current_ch"] = str(ch)
-        s["current_sec"] = str(sec)
+        cfg = self.get_config()
+
+        next_vol, next_ch, next_sec = vol, ch, sec + 1
+        if next_sec > cfg["sections_per_chapter"]:
+            next_sec = 1
+            next_ch += 1
+        if next_ch > cfg["chapters_per_volume"]:
+            next_ch = 1
+            next_vol += 1
+
+        s["current_vol"] = str(next_vol)
+        s["current_ch"] = str(next_ch)
+        s["current_sec"] = str(next_sec)
+        s["total_sections_written"] = str(self.get_total_sections_written())
         self.save_status(s)
 
     # ======== 世界观（多文件） ========
-
-    def list_world_domains(self) -> list[str]:
-        """返回已存在的领域文件名（不含扩展名）"""
-        files = self.store.list_files("world/*.md")
-        return sorted([f.stem for f in files if f.stem != "index"])
 
     def get_world_index(self) -> dict[str, str]:
         text = self.store.read("world", "index.md")
@@ -60,7 +80,8 @@ class ProjectContext:
             if ":" in line and line.startswith("- "):
                 line = line[2:]
                 k, v = line.split(":", 1)
-                result[k.strip()] = v.strip()
+                k = k.strip().lstrip("*").rstrip("*").strip()
+                result[k] = v.strip()
         return result
 
     def save_world_index(self, index: dict[str, str]) -> None:
@@ -139,10 +160,6 @@ class ProjectContext:
     def save_relationships(self, content: str) -> None:
         self.store.write(content, "characters", "relationships.md")
 
-    def list_factions(self) -> list[str]:
-        files = self.store.list_files("characters/factions/*.md")
-        return sorted([f.stem for f in files if f.stem != "index"])
-
     def get_faction(self, name: str) -> str:
         return self.store.read("characters", "factions", f"{name}.md")
 
@@ -169,16 +186,6 @@ class ProjectContext:
     def save_volume_outline(self, vol: int, content: str) -> None:
         self.store.write(content, "outline", f"volume_{vol:03d}.md")
 
-    def list_volume_outlines(self) -> list[int]:
-        files = self.store.list_files("outline/volume_*.md")
-        nums = []
-        for f in files:
-            try:
-                nums.append(int(f.stem.split("_")[1]))
-            except (IndexError, ValueError):
-                pass
-        return sorted(nums)
-
     # ======== 卷/章/节（三层正文） ========
 
     def list_volumes(self) -> list[int]:
@@ -192,12 +199,6 @@ class ProjectContext:
                 except (IndexError, ValueError):
                     pass
         return sorted(nums)
-
-    def get_volume_meta(self, vol: int) -> str:
-        return self.store.read("volumes", f"volume_{vol:03d}", "_meta.md")
-
-    def save_volume_meta(self, vol: int, content: str) -> None:
-        self.store.write(content, "volumes", f"volume_{vol:03d}", "_meta.md")
 
     def list_chapters(self, vol: int) -> list[int]:
         pattern = f"volumes/volume_{vol:03d}/chapter_*"
@@ -236,46 +237,25 @@ class ProjectContext:
         pattern = f"volumes/volume_{vol:03d}/chapter_{ch:03d}/section_*.md"
         nums = []
         for f in self.store.list_files(pattern):
-            name = f.stem
-            if "_v" in name:
-                continue
             try:
-                nums.append(int(name.split("_")[1]))
-            except (IndexError, ValueError):
-                pass
-        return sorted(nums)
-
-    def save_section_version(self, vol: int, ch: int, sec: int,
-                             version: int, content: str) -> None:
-        self.store.write(
-            content, "volumes", f"volume_{vol:03d}", f"chapter_{ch:03d}",
-            f"section_{sec:03d}_v{version}.md"
-        )
-
-    def list_section_versions(self, vol: int, ch: int, sec: int) -> list[int]:
-        pattern = f"volumes/volume_{vol:03d}/chapter_{ch:03d}/section_{sec:03d}_v*.md"
-        nums = []
-        for f in self.store.list_files(pattern):
-            try:
-                v = int(f.stem.split("_v")[1])
-                nums.append(v)
+                nums.append(int(f.stem.split("_")[1]))
             except (IndexError, ValueError):
                 pass
         return sorted(nums)
 
     def get_prev_section(self, vol: int, ch: int, sec: int) -> str:
-        """获取前一节内容（用于连续性）"""
+        """获取前一节完整内容（用于连续性，调用方自行截取结尾）"""
         cfg = self.get_config()
         if sec > 1:
-            return self.get_section(vol, ch, sec - 1)[:2000]
+            return self.get_section(vol, ch, sec - 1)
         if ch > 1:
             spc = cfg["sections_per_chapter"]
-            return self.get_section(vol, ch - 1, spc)[:2000]
+            return self.get_section(vol, ch - 1, spc)
         if vol > 1:
             prev_vol = vol - 1
             cpc = cfg["chapters_per_volume"]
             spc = cfg["sections_per_chapter"]
-            return self.get_section(prev_vol, cpc, spc)[:2000]
+            return self.get_section(prev_vol, cpc, spc)
         return ""
 
     def get_next_write_position(self) -> tuple[int, int, int] | None:
@@ -394,8 +374,7 @@ class ProjectContext:
         })
 
         # 世界观
-        domains = ["geography", "magic_system", "politics", "history", "races", "culture", "glossary", "timeline"]
-        index = {d: f"待生成: {d}" for d in domains}
+        index = {d: f"待生成: {d}" for d in self.WORLD_DOMAINS}
         self.save_world_index(index)
 
         # 世界时间线模板
@@ -457,8 +436,7 @@ class ProjectContext:
         self.save_state("# 剧情状态\n\n尚未开始写作。")
 
         # Agent 记忆
-        for agent_id in ["editor_in_chief", "world_builder", "character_director",
-                         "plot_writer", "style_executor", "state_manager"]:
+        for agent_id in self.AGENT_IDS:
             self.store.write(
                 f"# Agent: {agent_id}\n\n尚未开始。",
                 "agents", f"{agent_id}.md"

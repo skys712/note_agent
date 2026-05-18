@@ -15,9 +15,9 @@ class EditorInChief(BaseAgent):
     @property
     def system_prompt(self) -> str:
         _p = []
-        _p.append("你是百万字长篇小说的总编, 擅长商业文学的节奏把控和矛盾设计。")
+        _p.append("你是长篇小说的总编, 擅长商业文学的节奏把控和矛盾设计。")
         _p.append("")
-        _p.append("作品跨度 10 卷 x 15 章 x 3 节, 约 150 万字。你需要在节/章/卷三个层级上把控质量。")
+        _p.append("你需要在节/章/卷三个层级上把控质量。具体卷章节数量由项目配置决定(每次任务中会注入)。")
         _p.append("")
         _p.append("职责:")
         _p.append("1. 世界观阶段: 审校各领域设定的完整度、逻辑自治性、商业吸引力")

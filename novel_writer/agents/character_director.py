@@ -26,6 +26,7 @@ class CharacterDirector(BaseAgent):
         _p.append("3. 检查章节场景设计中角色行为是否偏离人物卡")
         _p.append("4. 追踪每个人物跨卷的成长弧线, 在记忆中用 [ARC] 记录里程碑")
         _p.append("5. 用 [CONSISTENCY] 记录跨卷行为一致性观察")
+        _p.append("6. 刷新已有的人物卡: 基于最新的世界设定和碎片信息, 对已有的人物卡进行补充、修订、优化, 保持人物核心基调不变")
         _p.append("")
         _p.append("注意: 百万字长篇中角色应有渐进式成长, 每个关键决策需要有前文铺垫。")
         _p.append("")

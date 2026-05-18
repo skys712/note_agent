@@ -1,8 +1,11 @@
 # 项目数据（含 API 密钥的配置）
 .vscode/
+novel_writer/config.json
 
 # 用户项目数据
 projects/
+volumes/
+world copy/
 
 # Python
 __pycache__/

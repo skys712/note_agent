@@ -13,8 +13,13 @@ class ContextBuilder:
         vol: int,
         ch: int,
         sec: int,
+        constraints: str = "",
     ) -> str:
         parts: list[str] = []
+
+        # === P0: 故事级约束（最高优先级，始终最先注入） ===
+        if constraints:
+            parts.append(constraints)
 
         # === P1: 场景元数据 + 前一节 + 时间线（总是注入） ===
         p1 = self._build_p1(ctx, vol, ch, sec)
@@ -49,12 +54,12 @@ class ContextBuilder:
         # 碎片参考摘要 (所有 Agent 都需要)
         frag_summary = ctx.get_fragments_summary()
         if frag_summary and "尚无碎片" not in frag_summary:
-            lines.append(f"## 碎片参考\n{frag_summary[:1500]}")
+            lines.append(f"## 碎片参考\n{frag_summary[:8000]}")
 
         # 本章场景设计
         chapter_meta = ctx.get_chapter_meta(vol, ch)
         if chapter_meta:
-            lines.append(f"## 本章场景设计\n{chapter_meta[:2000]}")
+            lines.append(f"## 本章场景设计\n{chapter_meta[:4000]}")
         else:
             vol_outline = ctx.get_volume_outline(vol)
             if vol_outline:
@@ -64,7 +69,7 @@ class ContextBuilder:
         # 前一节内容
         prev = ctx.get_prev_section(vol, ch, sec)
         if prev:
-            lines.append(f"## 前一节结尾\n{prev[:1500]}")
+            lines.append(f"## 前一节结尾\n{prev[-1500:]}")
 
         # 时间线
         timeline = ctx.get_timeline()
@@ -110,7 +115,8 @@ class ContextBuilder:
     ) -> str:
         lines = []
 
-        if agent_id in ("style_executor", "editor_in_chief", "character_director"):
+        if agent_id in ("style_executor", "editor_in_chief", "character_director",
+                       "emotion_controller", "chapter_break_director"):
             char_index = ctx.get_character_index()
             if char_index:
                 lines.append("## 人物总览\n" + "\n".join(
@@ -118,14 +124,16 @@ class ContextBuilder:
                     for e in char_index[:20]
                 ))
 
-        if agent_id in ("plot_writer", "editor_in_chief", "world_builder"):
+        if agent_id in ("plot_writer", "editor_in_chief", "world_builder",
+                       "style_executor", "chapter_break_director", "emotion_controller"):
             world_index = ctx.get_world_index()
             if world_index:
                 lines.append("## 世界观领域\n" + "\n".join(
                     f"- {d}: {summary}" for d, summary in world_index.items()
                 ))
 
-        if agent_id in ("character_director", "editor_in_chief"):
+        if agent_id in ("character_director", "editor_in_chief", "emotion_controller",
+                       "chapter_break_director"):
             rels = ctx.get_relationships()
             if rels and "尚未建立" not in rels:
                 lines.append(f"## 关系摘要\n{rels[:800]}")
