@@ -1,7 +1,8 @@
+import asyncio
 import time
 from dataclasses import dataclass
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from novel_writer.config import get_config
 
@@ -16,11 +17,11 @@ class LLMResponse:
 
 
 class LLMClient:
-    """OpenAI SDK 封装，使用 DeepSeek 原生 API"""
+    """AsyncOpenAI SDK 封装，使用 DeepSeek 原生 API"""
 
     def __init__(self):
         cfg = get_config()
-        self.client = OpenAI(
+        self.client = AsyncOpenAI(
             api_key=cfg["api_key"],
             base_url=cfg["base_url"],
             timeout=600.0,
@@ -29,14 +30,14 @@ class LLMClient:
         self.default_max_tokens = cfg["max_tokens"]
         self.thinking = cfg.get("thinking")
 
-    def chat(
+    async def chat(
         self,
         messages: list[dict],
         system: str | None = None,
         max_tokens: int | None = None,
         on_progress: "callable | None" = None,
     ) -> LLMResponse:
-        """发送聊天请求。on_progress(total_chars) 在流式接收时回调。"""
+        """发送聊天请求（异步）。on_progress(total_chars) 在流式接收时回调。"""
         msgs: list[dict] = []
         if system:
             msgs.append({"role": "system", "content": system})
@@ -55,12 +56,12 @@ class LLMClient:
         last_error = None
         for attempt in range(3):
             try:
-                stream = self.client.chat.completions.create(**kwargs)
+                stream = await self.client.chat.completions.create(**kwargs)
                 content_parts: list[str] = []
                 usage = None
                 model = self.model
                 total_chars = 0
-                for chunk in stream:
+                async for chunk in stream:
                     if chunk.choices:
                         delta = chunk.choices[0].delta
                         if delta.content:
@@ -85,5 +86,5 @@ class LLMClient:
             except Exception as e:
                 last_error = e
                 if attempt < 2:
-                    time.sleep(2 ** attempt)
+                    await asyncio.sleep(2 ** attempt)
         raise RuntimeError(f"LLM 调用失败，已重试 3 次: {last_error}")

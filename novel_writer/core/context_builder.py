@@ -46,8 +46,8 @@ class ContextBuilder:
     def _build_p1(self, ctx: ProjectContext, vol: int, ch: int, sec: int) -> str:
         lines = []
 
-        # 剧情状态 (所有 Agent 都需要)
-        state = ctx.get_state()
+        # 剧情状态 (所有 Agent 都需要) — 读取本节对应的前置 state 版本
+        state = ctx.get_state_for_section(vol, ch, sec)
         if state and "尚未开始" not in state:
             lines.append(f"## 当前剧情状态\n{state[:2000]}")
 
@@ -56,10 +56,10 @@ class ContextBuilder:
         if frag_summary and "尚无碎片" not in frag_summary:
             lines.append(f"## 碎片参考\n{frag_summary[:8000]}")
 
-        # 本章场景设计
+        # 本章场景设计 — 需要足够大的截断窗口以确保多节场景概要不被切断
         chapter_meta = ctx.get_chapter_meta(vol, ch)
         if chapter_meta:
-            lines.append(f"## 本章场景设计\n{chapter_meta[:4000]}")
+            lines.append(f"## 本章场景设计\n{chapter_meta[:12000]}")
         else:
             vol_outline = ctx.get_volume_outline(vol)
             if vol_outline:
@@ -82,6 +82,11 @@ class ContextBuilder:
 
     def _build_p2(self, ctx: ProjectContext, vol: int, ch: int) -> str:
         lines = []
+
+        # 全书梗概 (synopsis.md) — 最高层大纲，所有 Agent 都需要的全局方向感
+        synopsis = ctx.get_synopsis()
+        if synopsis and "尚未设计" not in synopsis:
+            lines.append(f"## 全书梗概\n{synopsis[:1500]}")
 
         # 卷弧线
         vol_outline = ctx.get_volume_outline(vol)
