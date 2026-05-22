@@ -2,19 +2,19 @@ import asyncio
 import re
 from pathlib import Path
 
+from novel_writer.agents.base import AgentTask
+from novel_writer.agents.chapter_break_director import ChapterBreakDirector
+from novel_writer.agents.character_director import CharacterDirector
+from novel_writer.agents.editor_in_chief import EditorInChief
+from novel_writer.agents.emotion_controller import EmotionController
+from novel_writer.agents.plot_writer import PlotWriter
+from novel_writer.agents.state_manager import StateManager
+from novel_writer.agents.style_executor import StyleExecutor
+from novel_writer.agents.world_builder import WorldBuilder
 from novel_writer.core.context import ProjectContext
+from novel_writer.core.context_builder import ContextBuilder
 from novel_writer.core.llm import LLMClient
 from novel_writer.core.logging import ExecutionLogger
-from novel_writer.agents.base import AgentTask
-from novel_writer.agents.editor_in_chief import EditorInChief
-from novel_writer.agents.world_builder import WorldBuilder
-from novel_writer.agents.character_director import CharacterDirector
-from novel_writer.agents.plot_writer import PlotWriter
-from novel_writer.agents.style_executor import StyleExecutor
-from novel_writer.agents.state_manager import StateManager
-from novel_writer.agents.emotion_controller import EmotionController
-from novel_writer.agents.chapter_break_director import ChapterBreakDirector
-from novel_writer.core.context_builder import ContextBuilder
 
 
 class WorkflowOrchestrator:
@@ -265,7 +265,7 @@ class WorkflowOrchestrator:
             async with sem:
                 return await coro, dname
 
-        bounded_tasks = [_bounded(t, self.DOMAIN_NAMES.get(d, d)) for t, d in zip(tasks, domains)]
+        bounded_tasks = [_bounded(t, self.DOMAIN_NAMES.get(d, d)) for t, d in zip(tasks, domains, strict=False)]
 
         for coro in asyncio.as_completed(bounded_tasks):
             try:
@@ -601,7 +601,7 @@ class WorkflowOrchestrator:
         card_a = self.ctx.get_character(char_a)
         card_b = self.ctx.get_character(char_b)
         if not card_a or not card_b:
-            print(f"  错误: 人物卡不存在。", flush=True)
+            print("  错误: 人物卡不存在。", flush=True)
             return
 
         current_rels = self.ctx.get_relationships()
@@ -626,7 +626,7 @@ class WorkflowOrchestrator:
             new_content = current_rels if "尚未建立" not in current_rels else "# 人物关系矩阵\n\n"
             new_content += f"\n{result.content}\n"
             self.ctx.save_relationships(new_content)
-            print(f"  关系已保存。", flush=True)
+            print("  关系已保存。", flush=True)
         else:
             print(f"  生成失败: {result.error}", flush=True)
 
@@ -1082,7 +1082,7 @@ class WorkflowOrchestrator:
         is_rewrite = bool(existing_content and existing_content.strip())
         if is_rewrite and not force:
             print(f"  本节已有内容 ({len(existing_content)} 字)。", flush=True)
-            print(f"  使用 --force 可强制重写（重写后后续节将失效）。", flush=True)
+            print("  使用 --force 可强制重写（重写后后续节将失效）。", flush=True)
             return
         if is_rewrite:
             print(f"  [重写模式] 本节已有 {len(existing_content)} 字内容，将覆盖。", flush=True)
@@ -1254,7 +1254,7 @@ class WorkflowOrchestrator:
             self.ctx.write_agent_memory("emotion_controller", emotion_guide.notes)
             print(f"  情绪指导: {emotion_guide.content[:300]}", flush=True)
         else:
-            print(f"  情绪分析异常, 继续执行。", flush=True)
+            print("  情绪分析异常, 继续执行。", flush=True)
 
         # Step 5: 总编给出写作方向指导
         self.log.step_start(5, 14, "总编", "direct")
@@ -1307,7 +1307,7 @@ class WorkflowOrchestrator:
             self.ctx.write_agent_memory("chapter_break_director", break_plan.notes)
             print(f"  断章策略: {break_plan.content[:300]}", flush=True)
         else:
-            print(f"  断章策略异常, 继续执行。", flush=True)
+            print("  断章策略异常, 继续执行。", flush=True)
 
         # Step 7: 文风执行者写正文
         self.log.step_start(7, 14, "文风执行者", "write",
@@ -1431,7 +1431,7 @@ class WorkflowOrchestrator:
                 name, content = verify_feedback[0]
                 print(f"\n  [REVIEW] {name} 提出轻微建议，是否需要根据此意见修订?", flush=True)
                 print(f"  {_indent(content[:200], '  ')}", flush=True)
-                print(f"\n  是否修订? (y/n/回车=修订): ", end="", flush=True)
+                print("\n  是否修订? (y/n/回车=修订): ", end="", flush=True)
                 choice = (await asyncio.to_thread(input)).strip().lower()
                 if choice in ("n", "no", "否"):
                     print("  跳过修订，验证问题将记录到 state.md 供后续参考。", flush=True)
@@ -1475,7 +1475,7 @@ class WorkflowOrchestrator:
             stale_count = self.ctx.invalidate_sections_after(vol, ch, sec)
             if stale_count > 0:
                 print(f"  [WARN] 重写完本节，后续 {stale_count} 节状态已标记为 stale。", flush=True)
-                print(f"  请按顺序重新生成后续节以恢复有效状态。", flush=True)
+                print("  请按顺序重新生成后续节以恢复有效状态。", flush=True)
 
         self.ctx.mark_progress(vol, ch, sec)
         self._update_status("writing")
@@ -1571,7 +1571,7 @@ class WorkflowOrchestrator:
             # 标记本节状态有效
             self.ctx.mark_section_valid(vol, ch, sec)
             self.ctx.write_agent_memory("state_manager", result.notes)
-            print(f"  状态已更新。", flush=True)
+            print("  状态已更新。", flush=True)
             if result.notes:
                 print(f"  观察笔记: {result.notes[:200]}", flush=True)
         else:

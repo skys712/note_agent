@@ -152,7 +152,6 @@ class ExecutionLogger:
         # 每接收 150 字符显示一个点
         if total_chars - milestone >= 150:
             self._local.progress_milestone = total_chars
-            elapsed = time.time() - getattr(self._local, "stream_start_time", time.time())
             if total_chars >= 1000 and total_chars % 1000 < 150:
                 # 每 1000 字符显示计数
                 self._print(f"{total_chars // 1000}k", end="")
@@ -214,7 +213,7 @@ class ExecutionLogger:
         if s.total_calls == 0:
             return
         self._print(f"\n{'=' * 60}")
-        self._print(f"  会话统计")
+        self._print("  会话统计")
         self._print(f"{'=' * 60}")
         self._print(f"  总调用次数:    {s.total_calls}")
         self._print(f"  总输入 Token:  {s.total_input_tokens:,}")
@@ -235,7 +234,7 @@ class ExecutionLogger:
         if not s.records:
             return
         self._print(f"\n{'-' * 60}")
-        self._print(f"  调用明细")
+        self._print("  调用明细")
         self._print(f"{'-' * 60}")
         header = f"  {'Agent':<16s} {'Action':<12s} {'输入':>8s} {'输出':>8s} {'耗时':>8s} {'结果':>8s}"
         self._print(header)

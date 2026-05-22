@@ -1,0 +1,49 @@
+[project]
+name = "novel-writer"
+version = "0.1.0"
+description = "8 Agent 协作长篇小说创作系统"
+requires-python = ">=3.12"
+dependencies = [
+    "openai>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.12.0",
+    "pytest>=8.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "SIM108", # ternary vs if-else is a style choice
+    "SIM105", # contextlib.suppress vs try-except-pass is a style choice
+    "SIM102", # nested if vs combined if-and is a style choice
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["novel_writer"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

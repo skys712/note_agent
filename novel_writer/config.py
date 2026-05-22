@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-
 CONFIG_FILE = Path(__file__).with_name("config.json")
 
 DEFAULT_CONFIG: dict[str, Any] = {

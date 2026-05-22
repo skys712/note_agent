@@ -346,9 +346,9 @@ def generate(agent_id, info):
         lines.append("        if memory:")
         lines.append(f'            parts.append(f"## {label}\\n{{memory}}")')
         lines.append("        if context:")
-        lines.append(f'            parts.append(f"## 当前项目状态\\n{{context}}")')
-        lines.append(f'        parts.append(f"## 任务\\n{{task.input_text}}")')
-        lines.append(f'        return [{{"role": "user", "content": "\\n\\n".join(parts)}}]')
+        lines.append('            parts.append(f"## 当前项目状态\\n{context}")')
+        lines.append('        parts.append(f"## 任务\\n{task.input_text}")')
+        lines.append('        return [{"role": "user", "content": "\\n\\n".join(parts)}]')
         lines.append("")
 
     return "\n".join(lines) + "\n"

@@ -158,11 +158,11 @@ class BaseAgent(ABC):
     def _looks_like_notes(cls, text: str) -> bool:
         if not text:
             return False
-        lines = [l for l in text.split("\n") if l.strip()]
+        lines = [ln for ln in text.split("\n") if ln.strip()]
         sample = lines[:7]
         if not sample:
             return False
-        match_count = sum(1 for l in sample if cls._line_starts_with_note(l))
+        match_count = sum(1 for ln in sample if cls._line_starts_with_note(ln))
         return match_count >= 2 or cls._line_starts_with_note(sample[0])
 
     @classmethod

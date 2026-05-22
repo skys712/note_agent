@@ -307,10 +307,6 @@ class ProjectContext:
             matching = [s for s in snapshots if s <= sec]
             if matching:
                 best_sec = max(matching)
-                snapshot_path = (
-                    f"volumes/volume_{vol:03d}/chapter_{ch:03d}/"
-                    f"state_after_sec_{best_sec:03d}.md"
-                )
                 state = self.store.read(
                     "volumes", f"volume_{vol:03d}", f"chapter_{ch:03d}",
                     f"state_after_sec_{best_sec:03d}.md"
@@ -421,7 +417,6 @@ class ProjectContext:
         3. 前几卷最后一节的有效 state 快照
         4. 全局 state.md（向后兼容）
         """
-        key = self._state_key(vol, ch, sec)
         idx = self._read_state_index()
 
         # 1. 同章前节
@@ -469,7 +464,6 @@ class ProjectContext:
     def invalidate_sections_after(self, vol: int, ch: int, sec: int) -> int:
         """将指定节之后的所有节标记为 stale。返回失效的节数。"""
         idx = self._read_state_index()
-        cfg = self.get_config()
         count = 0
 
         # 收集所有需要失效的 key
@@ -672,7 +666,7 @@ class ProjectContext:
 
         # 大纲
         self.save_synopsis("尚未设计。")
-        self.save_volume_outline(1, f"# 第一卷大纲\n\n尚未设计。")
+        self.save_volume_outline(1, "# 第一卷大纲\n\n尚未设计。")
         self.save_outline_meta({
             "synopsis_generated": "0",
             "volumes_outlined": "0",

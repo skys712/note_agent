@@ -1,4 +1,4 @@
-from novel_writer.agents.base import BaseAgent, AgentTask, AgentResult
+from novel_writer.agents.base import BaseAgent
 from novel_writer.core.llm import LLMClient
 
 

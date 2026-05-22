@@ -16,7 +16,6 @@ from novel_writer.core.context import ProjectContext
 from novel_writer.core.llm import LLMClient
 from novel_writer.core.logging import ExecutionLogger
 
-
 # 8 个世界观领域及其完备标准
 DOMAIN_COMPLETENESS_CRITERIA = {
     "geography": {
@@ -525,8 +524,8 @@ class WorldBuildingLoop:
             for j, opt in enumerate(options):
                 letter = chr(ord("A") + j)
                 print(f"  {letter}. {opt}")
-            print(f"  S. 跳过（暂时忽略此矛盾）")
-            print(f"  C. 自定义解决方案")
+            print("  S. 跳过（暂时忽略此矛盾）")
+            print("  C. 自定义解决方案")
 
             choice = ""
             while True:

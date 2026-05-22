@@ -12,7 +12,6 @@ if sys.platform == "win32":
 from novel_writer.core.context import ProjectContext
 from novel_writer.core.workflow import WorkflowOrchestrator
 
-
 # 仓库根: novel_writer/main.py -> 上两级
 _WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 
@@ -257,9 +256,9 @@ async def cmd_world_generate(args) -> None:
 
 async def cmd_world_interactive(args) -> None:
     path = get_project_path()
-    from novel_writer.core.world_building_loop import WorldBuildingLoop
     from novel_writer.core.llm import LLMClient
     from novel_writer.core.logging import ExecutionLogger
+    from novel_writer.core.world_building_loop import WorldBuildingLoop
 
     ctx = ProjectContext(path)
     loop = WorldBuildingLoop(ctx, LLMClient(), ExecutionLogger(debug=args.debug))
@@ -370,7 +369,7 @@ def cmd_reset(args) -> None:
         else:
             target_desc = f"第{vol}卷第{ch}章" + (f"第{sec}节" if sec else "")
         print(f"将重置到 {target_desc} 之后，删除该位置之后的所有内容。", flush=True)
-        print(f"确认? (y/n): ", end="", flush=True)
+        print("确认? (y/n): ", end="", flush=True)
         choice = input().strip().lower()
         if choice not in ("y", "yes", "是"):
             print("已取消。", flush=True)
@@ -378,16 +377,16 @@ def cmd_reset(args) -> None:
 
         stats = ctx.reset_to(vol, ch, sec)
         nv, nc, ns = stats["next_position"]
-        print(f"重置完成。", flush=True)
+        print("重置完成。", flush=True)
         print(f"  删除: {stats['deleted_volumes']} 卷, {stats['deleted_chapters']} 章, {stats['deleted_sections']} 节", flush=True)
         print(f"  下一写作位置: 第 {nv} 卷 第 {nc} 章 第 {ns} 节", flush=True)
     else:
         stats = ctx.get_total_sections_written()
         vols_count = len(ctx.list_volumes())
-        print(f"将完全重置写作进度：", flush=True)
+        print("将完全重置写作进度：", flush=True)
         print(f"  已写: {vols_count} 卷, {stats} 节", flush=True)
-        print(f"  将删除所有已写章节、剧情状态、故事时间线、Agent 记忆。", flush=True)
-        print(f"  保留：世界观、人物卡、大纲、碎片。", flush=True)
+        print("  将删除所有已写章节、剧情状态、故事时间线、Agent 记忆。", flush=True)
+        print("  保留：世界观、人物卡、大纲、碎片。", flush=True)
         print(f"确认? 输入项目名 '{ctx.project_name}' 以确认: ", end="", flush=True)
         choice = input().strip()
         if choice != ctx.project_name:
@@ -395,9 +394,9 @@ def cmd_reset(args) -> None:
             return
 
         stats = ctx.reset_full()
-        print(f"重置完成。", flush=True)
+        print("重置完成。", flush=True)
         print(f"  删除: {stats['deleted_volumes']} 卷, {stats['deleted_sections']} 节", flush=True)
-        print(f"  下一写作位置: 第 1 卷 第 1 章 第 1 节", flush=True)
+        print("  下一写作位置: 第 1 卷 第 1 章 第 1 节", flush=True)
 
 
 async def cmd_publish(args) -> None:
@@ -410,7 +409,7 @@ async def cmd_publish(args) -> None:
         max_workers=args.workers,
     )
     if output:
-        print(f"\n发布完成。", flush=True)
+        print("\n发布完成。", flush=True)
 
 
 async def cmd_fragment(args) -> None:
@@ -497,10 +496,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_frag_add = p_frag_sub.add_parser("add", help="添加碎片")
     p_frag_add.add_argument("text", help="碎片内容")
     p_frag_add.add_argument("--type", default="未分类", help="碎片类型")
-    p_frag_list = p_frag_sub.add_parser("list", help="列出碎片")
+    p_frag_sub.add_parser("list", help="列出碎片")
     p_frag_show = p_frag_sub.add_parser("show", help="查看碎片")
     p_frag_show.add_argument("id", help="碎片ID")
-    p_frag_scan = p_frag_sub.add_parser("scan", help="扫描生成摘要")
+    p_frag_sub.add_parser("scan", help="扫描生成摘要")
 
     # 世界观
     # 世界观
@@ -526,7 +525,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_char_create.add_argument("--role", default="配角", help="角色定位")
     p_char_create.add_argument("--faction", default="无", help="所属势力")
     p_char_create.add_argument("--specs", default="", help="补充要求")
-    p_char_list = p_char_sub.add_parser("list", help="列出人物")
+    p_char_sub.add_parser("list", help="列出人物")
     p_char_show = p_char_sub.add_parser("show", help="查看人物")
     p_char_show.add_argument("id", help="人物ID")
     p_char_rel = p_char_sub.add_parser("relation", help="创建人物关系")
